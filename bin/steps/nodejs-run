@@ -19,7 +19,7 @@ fi
 # Look in package.json's engines.node field for a semver range
 SEMVER_RANGE="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.node)"
 NPM_SEMVER_RANGE=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.npm)
-YARN_SEMVER_RANGE=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.yarn)
+YARN_VERSION=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.yarn)
 
 # Look in package.json's engines.node field for the vr-build script
 VR_BUILD_SCRIPT="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r '.scripts."vr-build"')"
@@ -52,13 +52,16 @@ else
         npm --global install npm@"$NPM_VERSION"
     fi
 
-    if [ ! -z "$YARN_SEMVER_RANGE" ] && [ "$YARN_SEMVER_RANGE" != "null" ]; then
-        # semver.io doesn't support yarn but we can just install using a version range from npm
-        echo "-----> Installing yarn (version $YARN_SEMVER_RANGE)"
-        npm --global install yarn@"$YARN_SEMVER_RANGE"
+    if [ ! -z "$YARN_VERSION" ] && [ "$YARN_VERSION" != "null" ]; then
+        # semver.io doesn't support yarn but we just always specify a concrete version
+        echo "-----> Installing yarn (version $YARN_VERSION)"
+        YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
+        mkdir -p $BUILD_DIR/vendor/yarn
+        curl $YARN_URL -s -L -o - | tar xzf - -C $BUILD_DIR/vendor/yarn
+        export PATH=$BUILD_DIR/vendor/yarn/dist/bin:$PATH
     fi
 
-    if [ ! -z "$YARN_SEMVER_RANGE" ] && [ "$YARN_SEMVER_RANGE" != "null" ]; then
+    if [ ! -z "$YARN_VERSION" ] && [ "$YARN_VERSION" != "null" ]; then
         echo "-----> Running 'yarn run vr-build'"
         yarn run vr-build
     else
