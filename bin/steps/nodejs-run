@@ -58,8 +58,13 @@ else
         npm --global install yarn@"$YARN_SEMVER_RANGE"
     fi
 
-    echo "-----> Running 'npm run vr-build'"
-    npm run vr-build
+    if [ ! -z "$YARN_SEMVER_RANGE" ] && [ "$YARN_SEMVER_RANGE" != "null" ]; then
+        echo "-----> Running 'yarn run vr-build'"
+        yarn run vr-build
+    else
+        echo "-----> Running 'npm run vr-build'"
+        npm run vr-build
+    fi
 fi
 
 echo
