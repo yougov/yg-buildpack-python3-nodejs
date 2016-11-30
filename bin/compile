@@ -33,6 +33,9 @@
 # Fail fast and fail hard.
 set -eo pipefail
 
+# Fail on use of unset variables.
+set -u
+
 # Prepend proper path for virtualenv hackery. This will be deprecated soon.
 export PATH=:/usr/local/bin:$PATH
 
@@ -148,6 +151,9 @@ if [ "$NAME" = "Python/Django" ]; then
   puts-step "Running $BIN_DIR/steps/django"
   source $BIN_DIR/steps/django
 fi
+
+# Node.js production task.
+source $BIN_DIR/steps/nodejs-run $BUILD_DIR
 
 puts-step "Relocating venv"
 source $BIN_DIR/steps/relocate

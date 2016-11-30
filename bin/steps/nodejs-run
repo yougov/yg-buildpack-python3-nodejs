@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+# Fail fast and fail hard.
+set -eo pipefail
+
+# Fail on use of unset variables.
+set -u
+
+BUILD_DIR=$1
+BP_DIR="$(cd $(dirname $0); cd ..; pwd)"
+
+echo "-----> jq version: $($BP_DIR/vendor/jq --version)"
+
+if [ ! -f "$BUILD_DIR/package.json" ]; then
+    echo "-----> No package.json found"
+    exit 1
+fi
+
+# Look in package.json's engines.node field for a semver range
+SEMVER_RANGE="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.node)"
+NPM_SEMVER_RANGE=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.npm)
+
+# Look in package.json's engines.node field for the vr-build script
+VR_BUILD_SCRIPT="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r '.scripts."vr-build"')"
+
+# Resolve Node.js version using semver.io
+NODE_VERSION="$(curl --silent --get --data-urlencode "range=${SEMVER_RANGE}" https://semver.io/node/resolve)"
+
+# Run the vr-build npm script.
+puts-step "Running the 'vr-build' npm script with Node.js"
+
+if [ -z "$VR_BUILD_SCRIPT" ] || [ "$VR_BUILD_SCRIPT" == "null" ]; then
+    echo "-----> No 'vr-build' npm script found in the package.json (see https://docs.npmjs.com/misc/scripts)"
+    exit 1
+else
+    echo "-----> Found package.json & the vr-build npm script"
+
+    # Install node.
+    echo "-----> Installing Node.js (version $NODE_VERSION)"
+    NODE_URL="https://s3pository.heroku.com/node/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.gz"
+    curl $NODE_URL -s -o - | tar xzf - -C $BUILD_DIR
+    mkdir -p $BUILD_DIR/vendor
+    mv $BUILD_DIR/node-v$NODE_VERSION-linux-x64 $BUILD_DIR/vendor/node
+    chmod +x $BUILD_DIR/vendor/node/bin/*
+    PATH=$BUILD_DIR/vendor/node/bin:$PATH
+
+    if [ ! -z "$NPM_SEMVER_RANGE" ] && [ "$NPM_SEMVER_RANGE" != "null" ]; then
+        # Resolve npm version using semver.io
+        NPM_VERSION="$(curl --silent --get --data-urlencode "range=${NPM_SEMVER_RANGE}" https://semver.io/npm/resolve)"
+        echo "-----> Installing npm (version $NPM_VERSION)"
+        npm --global install npm@"$NPM_VERSION"
+    fi
+
+    echo "-----> Running 'npm run vr-build'"
+    npm run vr-build
+fi
+
+echo
