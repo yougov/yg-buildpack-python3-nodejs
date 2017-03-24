@@ -19,7 +19,10 @@ fi
 # Look in package.json's engines.node field for a semver range
 SEMVER_RANGE="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.node)"
 NPM_SEMVER_RANGE=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.npm)
-YARN_VERSION=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.yarn)
+YARN_SEMVER_RANGE=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.yarn)
+
+test ! -z "$YARN_SEMVER_RANGE" -a "$YARN_SEMVER_RANGE" != "null"
+USE_YARN=$?
 
 # Look in package.json's engines.node field for the vr-build script
 VR_BUILD_SCRIPT="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r '.scripts."vr-build"')"
@@ -45,23 +48,22 @@ else
     chmod +x $BUILD_DIR/vendor/node/bin/*
     PATH=$BUILD_DIR/vendor/node/bin:$PATH
 
-    if [ ! -z "$NPM_SEMVER_RANGE" ] && [ "$NPM_SEMVER_RANGE" != "null" ]; then
+    if [ ! -z "$YARN_SEMVER_RANGE" ] && [ "$YARN_SEMVER_RANGE" != "null" ]; then
+        # Resolve Yarn version using semver.io
+        YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" https://semver.io/yarn/resolve)"
+        echo "-----> Installing Yarn (version $YARN_VERSION)"
+        YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
+        mkdir -p $BUILD_DIR/vendor/yarn
+        curl $YARN_URL -s -L -o - | tar xzf - -C $BUILD_DIR/vendor/yarn
+        export PATH=$BUILD_DIR/vendor/yarn/dist/bin:$PATH
+    elif [ ! -z "$NPM_SEMVER_RANGE" ] && [ "$NPM_SEMVER_RANGE" != "null" ]; then
         # Resolve npm version using semver.io
         NPM_VERSION="$(curl --silent --get --data-urlencode "range=${NPM_SEMVER_RANGE}" https://semver.io/npm/resolve)"
         echo "-----> Installing npm (version $NPM_VERSION)"
         npm --global install npm@"$NPM_VERSION"
     fi
 
-    if [ ! -z "$YARN_VERSION" ] && [ "$YARN_VERSION" != "null" ]; then
-        # semver.io doesn't support yarn but we just always specify a concrete version
-        echo "-----> Installing yarn (version $YARN_VERSION)"
-        YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
-        mkdir -p $BUILD_DIR/vendor/yarn
-        curl $YARN_URL -s -L -o - | tar xzf - -C $BUILD_DIR/vendor/yarn
-        export PATH=$BUILD_DIR/vendor/yarn/dist/bin:$PATH
-    fi
-
-    if [ ! -z "$YARN_VERSION" ] && [ "$YARN_VERSION" != "null" ]; then
+    if [ $USE_YARN -eq 0 ]; then
         echo "-----> Running 'yarn run vr-build'"
         yarn run vr-build
     else
