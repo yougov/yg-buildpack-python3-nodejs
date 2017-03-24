@@ -7,6 +7,7 @@ set -eo pipefail
 set -u
 
 BUILD_DIR=$1
+CACHE_DIR=$2
 BP_DIR="$(cd $(dirname $0); cd ..; pwd)"
 
 echo "-----> jq version: $($BP_DIR/vendor/jq --version)"
@@ -47,8 +48,25 @@ else
     mv $BUILD_DIR/node-v$NODE_VERSION-linux-x64 $BUILD_DIR/vendor/node
     chmod +x $BUILD_DIR/vendor/node/bin/*
     PATH=$BUILD_DIR/vendor/node/bin:$PATH
+    
+    # When using Yarn we only restore its cache but not node_modules; Yarn uses its local
+    # cache and doesn't connect to the internet in such a case anyway and it's quite fast
+    # but at the same time it's more stable to have fresh node_modules copy in every build.
+    # We're not copying the cache as it can be large but instead use it directly.
+    if [ ! $USE_YARN -eq 0 ]; then
+        # If node_modules directory is checked into source control then
+        # rebuild any native deps. Otherwise, restore from the build cache.
+        if [ -d "$BUILD_DIR/node_modules" ]; then
+            status "Found existing node_modules directory; skipping cache"
+            status "Rebuilding any native dependencies"
+            npm rebuild 2>&1 | indent
+        elif [ -d "$CACHE_DIR/node_modules" ]; then
+            status "Restoring node_modules directory from cache"
+            cp -r $CACHE_DIR/node_modules $BUILD_DIR/
+        fi
+    fi
 
-    if [ ! -z "$YARN_SEMVER_RANGE" ] && [ "$YARN_SEMVER_RANGE" != "null" ]; then
+    if [ $USE_YARN -eq 0 ]; then
         # Resolve Yarn version using semver.io
         YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" https://semver.io/yarn/resolve)"
         echo "-----> Installing Yarn (version $YARN_VERSION)"
@@ -56,6 +74,11 @@ else
         mkdir -p $BUILD_DIR/vendor/yarn
         curl $YARN_URL -s -L -o - | tar xzf - -C $BUILD_DIR/vendor/yarn
         export PATH=$BUILD_DIR/vendor/yarn/dist/bin:$PATH
+
+        status "Setting Yarn cache location"
+        rm -rf "$CACHE_DIR/node_modules"
+        mkdir -p "$CACHE_DIR/yarn-cache"
+        yarn config set cache-folder "$CACHE_DIR/yarn-cache"
     elif [ ! -z "$NPM_SEMVER_RANGE" ] && [ "$NPM_SEMVER_RANGE" != "null" ]; then
         # Resolve npm version using semver.io
         NPM_VERSION="$(curl --silent --get --data-urlencode "range=${NPM_SEMVER_RANGE}" https://semver.io/npm/resolve)"
