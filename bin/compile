@@ -153,7 +153,7 @@ if [ "$NAME" = "Python/Django" ]; then
 fi
 
 # Node.js production task.
-source $BIN_DIR/steps/nodejs-run $BUILD_DIR
+source $BIN_DIR/steps/nodejs-run $BUILD_DIR $CACHE_DIR
 
 puts-step "Relocating venv"
 source $BIN_DIR/steps/relocate
