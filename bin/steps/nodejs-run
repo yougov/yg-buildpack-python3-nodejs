@@ -75,7 +75,7 @@ else
         YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
         mkdir -p $BUILD_DIR/vendor/yarn
         curl $YARN_URL -s -L -o - | tar xzf - -C $BUILD_DIR/vendor/yarn
-        export PATH=$BUILD_DIR/vendor/yarn/dist/bin:$PATH
+        export PATH=$BUILD_DIR/vendor/yarn/yarn-v$YARN_VERSION/bin:$PATH
 
         status "Setting Yarn cache location"
         rm -rf "$CACHE_DIR/node_modules"
