@@ -22,6 +22,70 @@ SEMVER_RANGE="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.node
 NPM_SEMVER_RANGE=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.npm)
 YARN_SEMVER_RANGE=$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r .engines.yarn)
 
+get_os() {
+  uname | tr '[:upper:]' '[:lower:]'
+}
+
+RESOLVE="$BP_DIR/vendor/resolve-version-$(get_os)"
+
+resolve() {
+  local binary="$1"
+  local versionRequirement="$2"
+  local n=0
+  local output
+
+  # retry this up to 5 times in case of spurious failed API requests
+  until [ $n -ge 5 ]
+  do
+    if output=$($RESOLVE "$binary" "$versionRequirement"); then
+      echo "$output"
+      return 0
+    # don't retry if we get a negative result
+    elif [[ $output = "No result" ]]; then
+      return 1
+    elif [[ $output == "Could not parse"* ]] || [[ $output == "Could not get"* ]]; then
+      return 1
+    else
+      n=$((n+1))
+      # break for a second with a linear backoff
+      sleep $((n+1))
+    fi
+  done
+
+  return 1
+}
+
+fail_bin_install() {
+  local error
+  local bin="$1"
+  local version="$2"
+
+  # Allow the subcommand to fail without trapping the error so we can
+  # get the failing message output
+  set +e
+
+  # re-request the result, saving off the reason for the failure this time
+  error=$($RESOLVE "$bin" "$version")
+
+  # re-enable trapping
+  set -e
+
+  if [[ $error = "No result" ]]; then
+    case $bin in
+      node)
+        echo "Could not find Node version corresponding to version requirement: $version";;
+      yarn)
+        echo "Could not find Yarn version corresponding to version requirement: $version";;
+    esac
+  elif [[ $error == "Could not parse"* ]] || [[ $error == "Could not get"* ]]; then
+    echo "Error: Invalid semantic version \"$version\""
+  else
+    echo "Error: Unknown error installing \"$version\" of $bin"
+  fi
+
+  return 1
+}
+
 set +e
 test ! -z "$YARN_SEMVER_RANGE" -a "$YARN_SEMVER_RANGE" != "null"
 USE_YARN=$?
@@ -30,8 +94,13 @@ set -e
 # Look in package.json's engines.node field for the vr-build script
 VR_BUILD_SCRIPT="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r '.scripts."vr-build"')"
 
-# Resolve Node.js version using semver.io
-NODE_VERSION="$(curl --silent --get --data-urlencode "range=${SEMVER_RANGE}" https://semver.io/node/resolve)"
+echo "Resolving node version $SEMVER_RANGE..."
+node_resolve_result=$(resolve node "$SEMVER_RANGE" || echo "failed")
+read -r NODE_VERSION NODE_URL < <(echo "$node_resolve_result")
+
+if [[ "$node_resolve_result" == "failed" ]]; then
+  fail_bin_install node "$version"
+fi
 
 # Run the vr-build npm script.
 puts-step "Running the 'vr-build' npm script with Node.js"
@@ -44,7 +113,6 @@ else
 
     # Install node.
     echo "-----> Installing Node.js (version $NODE_VERSION)"
-    NODE_URL="https://s3pository.heroku.com/node/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.gz"
     curl $NODE_URL -s -o - | tar xzf - -C $BUILD_DIR
     mkdir -p $BUILD_DIR/vendor
     mv $BUILD_DIR/node-v$NODE_VERSION-linux-x64 $BUILD_DIR/vendor/node
@@ -69,10 +137,16 @@ else
     fi
 
     if [ $USE_YARN -eq 0 ]; then
-        # Resolve Yarn version using semver.io
-        YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" https://semver.io/yarn/resolve)"
-        echo "-----> Installing Yarn (version $YARN_VERSION)"
-        YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
+        echo "Resolving yarn version $YARN_SEMVER_RANGE..."
+        resolve_result=$(resolve yarn "$YARN_SEMVER_RANGE" || echo "failed")
+
+        if [[ "$resolve_result" == "failed" ]]; then
+            fail_bin_install yarn "$YARN_SEMVER_RANGE"
+        fi
+
+        read -r YARN_VERSION YARN_URL < <(echo "$resolve_result")
+        echo "Downloading and installing yarn ($YARN_VERSION)..."
+
         mkdir -p $BUILD_DIR/vendor/yarn
         curl $YARN_URL -s -L -o - | tar xzf - -C $BUILD_DIR/vendor/yarn
         export PATH=$BUILD_DIR/vendor/yarn/yarn-v$YARN_VERSION/bin:$PATH
@@ -82,8 +156,7 @@ else
         mkdir -p "$CACHE_DIR/yarn-cache"
         yarn config set cache-folder "$CACHE_DIR/yarn-cache"
     elif [ ! -z "$NPM_SEMVER_RANGE" ] && [ "$NPM_SEMVER_RANGE" != "null" ]; then
-        # Resolve npm version using semver.io
-        NPM_VERSION="$(curl --silent --get --data-urlencode "range=${NPM_SEMVER_RANGE}" https://semver.io/npm/resolve)"
+        NPM_VERSION="$(npm --version)"
         echo "-----> Installing npm (version $NPM_VERSION)"
         npm --global install npm@"$NPM_VERSION"
     fi
