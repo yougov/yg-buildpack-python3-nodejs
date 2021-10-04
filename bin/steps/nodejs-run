@@ -31,7 +31,7 @@ set -e
 VR_BUILD_SCRIPT="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r '.scripts."vr-build"')"
 
 # Resolve Node.js version using semver.io
-NODE_VERSION="$(curl --silent --get --data-urlencode "range=${SEMVER_RANGE}" https://semver.io/node/resolve)"
+NODE_VERSION="$(curl --silent --get --data-urlencode "range=${SEMVER_RANGE}" http://semver.io/node/resolve)"
 
 # Run the vr-build npm script.
 puts-step "Running the 'vr-build' npm script with Node.js"
