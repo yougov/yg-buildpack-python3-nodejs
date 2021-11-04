@@ -46,7 +46,7 @@ else
     echo "-----> Installing Node.js (version $NODE_VERSION)"
     NODE_URL="http://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.gz"
     echo "-----> Node.js url is $NODE_URL"
-    curl $NODE_URL -s -o - | tar xzf - -C $BUILD_DIR
+    curl $NODE_URL -L -k -s -o - | tar xzf - -C $BUILD_DIR
     echo "-----> Node.js untar"
     mkdir -p $BUILD_DIR/vendor
     mv $BUILD_DIR/node-v$NODE_VERSION-linux-x64 $BUILD_DIR/vendor/node
