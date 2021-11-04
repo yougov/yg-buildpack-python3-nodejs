@@ -44,7 +44,7 @@ else
 
     # Install node.
     echo "-----> Installing Node.js (version $NODE_VERSION)"
-    NODE_URL="https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.gz"
+    NODE_URL="http://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.gz"
     echo "-----> Node.js url is $NODE_URL"
     curl $NODE_URL -s -o - | tar xzf - -C $BUILD_DIR
     echo "-----> Node.js untar"
@@ -77,7 +77,7 @@ else
         echo "-----> Installing Yarn (version $YARN_VERSION)"
         YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
         mkdir -p $BUILD_DIR/vendor/yarn
-        curl $YARN_URL -s -L -o - | tar xzf - -C $BUILD_DIR/vendor/yarn
+        curl $YARN_URL -k -s -L -o - | tar xzf - -C $BUILD_DIR/vendor/yarn
         export PATH=$BUILD_DIR/vendor/yarn/yarn-v$YARN_VERSION/bin:$PATH
 
         status "Setting Yarn cache location"
