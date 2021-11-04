@@ -45,10 +45,13 @@ else
     # Install node.
     echo "-----> Installing Node.js (version $NODE_VERSION)"
     NODE_URL="https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.gz"
+    echo "-----> Node.js url is $NODE_URL"
     curl $NODE_URL -s -o - | tar xzf - -C $BUILD_DIR
+    echo "-----> Node.js untar"
     mkdir -p $BUILD_DIR/vendor
     mv $BUILD_DIR/node-v$NODE_VERSION-linux-x64 $BUILD_DIR/vendor/node
     chmod +x $BUILD_DIR/vendor/node/bin/*
+    echo "-----> Node.js unpacked in the bin folder2
     PATH=$BUILD_DIR/vendor/node/bin:$PATH
     
     # When using Yarn we only restore its cache but not node_modules; Yarn uses its local
@@ -70,7 +73,7 @@ else
 
     if [ $USE_YARN -eq 0 ]; then
         # Resolve Yarn version using semver.io
-        YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" https://semver.io/yarn/resolve)"
+        YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" http://semver.io/yarn/resolve)"
         echo "-----> Installing Yarn (version $YARN_VERSION)"
         YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
         mkdir -p $BUILD_DIR/vendor/yarn
@@ -83,7 +86,7 @@ else
         yarn config set cache-folder "$CACHE_DIR/yarn-cache"
     elif [ ! -z "$NPM_SEMVER_RANGE" ] && [ "$NPM_SEMVER_RANGE" != "null" ]; then
         # Resolve npm version using semver.io
-        NPM_VERSION="$(curl --silent --get --data-urlencode "range=${NPM_SEMVER_RANGE}" https://semver.io/npm/resolve)"
+        NPM_VERSION="$(curl --silent --get --data-urlencode "range=${NPM_SEMVER_RANGE}" http://semver.io/npm/resolve)"
         echo "-----> Installing npm (version $NPM_VERSION)"
         npm --global install npm@"$NPM_VERSION"
     fi
