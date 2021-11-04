@@ -51,7 +51,7 @@ else
     mkdir -p $BUILD_DIR/vendor
     mv $BUILD_DIR/node-v$NODE_VERSION-linux-x64 $BUILD_DIR/vendor/node
     chmod +x $BUILD_DIR/vendor/node/bin/*
-    echo "-----> Node.js unpacked in the bin folder2
+    echo "-----> Node.js unpacked in the bin folder2"
     PATH=$BUILD_DIR/vendor/node/bin:$PATH
     
     # When using Yarn we only restore its cache but not node_modules; Yarn uses its local
