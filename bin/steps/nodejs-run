@@ -77,7 +77,11 @@ else
 
     if [ $USE_YARN -eq 0 ]; then
         # Resolve Yarn version using semver.io
-        YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" http://semver.io/yarn/resolve)"
+        if [ $YARN_SEMVER_RANGE = '1.22.19']; then
+            YARN_VERSION="1.22.19"
+        else
+            YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" http://semver.io/yarn/resolve)"
+        fi
         echo "-----> Installing Yarn (version $YARN_VERSION)"
         YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
         mkdir -p $BUILD_DIR/vendor/yarn
