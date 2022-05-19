@@ -77,7 +77,7 @@ else
 
     if [ $USE_YARN -eq 0 ]; then
         # Resolve Yarn version using semver.io
-        if [ $YARN_SEMVER_RANGE = '1.22.19']; then
+        if [ $YARN_SEMVER_RANGE = '1.22.19' ]; then
             YARN_VERSION="1.22.19"
         else
             YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" http://semver.io/yarn/resolve)"
