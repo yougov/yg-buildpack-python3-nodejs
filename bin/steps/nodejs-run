@@ -35,7 +35,7 @@ set -e
 VR_BUILD_SCRIPT="$(cat $BUILD_DIR/package.json | $BP_DIR/vendor/jq -r '.scripts."vr-build"')"
 
 # Resolve Node.js version using semver.io
-NODE_VERSION="$(curl --silent --get --data-urlencode "range=${SEMVER_RANGE}" http://semver.io/node/resolve)"
+NODE_VERSION="${SEMVER_RANGE}"
 
 # Run the vr-build npm script.
 puts-step "Running the 'vr-build' npm script with Node.js"
@@ -80,7 +80,7 @@ else
         if [ $YARN_SEMVER_RANGE = '1.22.19' ]; then
             YARN_VERSION="1.22.19"
         else
-            YARN_VERSION="$(curl --silent --get --data-urlencode "range=${YARN_SEMVER_RANGE}" http://semver.io/yarn/resolve)"
+            YARN_VERSION="${YARN_SEMVER_RANGE}"
         fi
         echo "-----> Installing Yarn (version $YARN_VERSION)"
         YARN_URL="https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"
@@ -94,7 +94,7 @@ else
         yarn config set cache-folder "$CACHE_DIR/yarn-cache"
     elif [ ! -z "$NPM_SEMVER_RANGE" ] && [ "$NPM_SEMVER_RANGE" != "null" ]; then
         # Resolve npm version using semver.io
-        NPM_VERSION="$(curl --silent --get --data-urlencode "range=${NPM_SEMVER_RANGE}" http://semver.io/npm/resolve)"
+        NPM_VERSION="${NPM_SEMVER_RANGE}"
         echo "-----> Installing npm (version $NPM_VERSION)"
         npm --global install npm@"$NPM_VERSION"
     fi
